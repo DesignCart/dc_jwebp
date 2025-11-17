@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="system" method="upgrade" version="5.0">
+    <name>PLG_SYSTEM_DC_JWEBP</name>
+    <author>Design Cart</author>
+    <creationDate>2025-01-01</creationDate>
+    <copyright>Design Cart</copyright>
+    <license>GPL-3.0</license>
+    <version>1.0.0</version>
+    <description>PLG_SYSTEM_DC_JWEBP_XML_DESCRIPTION</description>
+
+    <languages folder="language">
+        <language tag="en-GB">en-GB/en-GB.plg_system_dc_jwebp.sys.ini</language>
+        <language tag="en-GB">en-GB/en-GB.plg_system_dc_jwebp.ini</language>
+        <language tag="pl-PL">pl-PL/pl-PL.plg_system_dc_jwebp.sys.ini</language>
+        <language tag="pl-PL">pl-PL/pl-PL.plg_system_dc_jwebp.ini</language>
+    </languages>
+
+    <files>
+        <filename plugin="dc_jwebp">dc_jwebp.php</filename>
+        <folder>helper</folder>
+        <filename>dc_jwebp.xml</filename>
+    </files>
+
+    <config>
+        <fieldset name="basic" label="PLG_SYSTEM_DC_JWEBP_FIELD_SETTINGS_LABEL">
+
+            <field
+                name="quality"
+                type="number"
+                label="PLG_SYSTEM_DC_JWEBP_FIELD_QUALITY_LABEL"
+                description="PLG_SYSTEM_DC_JWEBP_FIELD_QUALITY_DESC"
+                default="85"
+                min="0"
+                max="100"
+            />
+
+            <field
+                name="exclude"
+                type="textarea"
+                label="PLG_SYSTEM_DC_JWEBP_FIELD_EXCLUDE_LABEL"
+                description="PLG_SYSTEM_DC_JWEBP_FIELD_EXCLUDE_DESC"
+            />
+
+            <field
+                name="lazyload"
+                type="radio"
+                label="PLG_SYSTEM_DC_JWEBP_FIELD_LAZYLOAD_LABEL"
+                description="PLG_SYSTEM_DC_JWEBP_FIELD_LAZYLOAD_DESC"
+                default="1"
+            >
+                <option value="1">PLG_SYSTEM_DC_JWEBP_OPTION_ENABLED</option>
+                <option value="0">PLG_SYSTEM_DC_JWEBP_OPTION_DISABLED</option>
+            </field>
+
+        </fieldset>
+    </config>
+
+</extension>
