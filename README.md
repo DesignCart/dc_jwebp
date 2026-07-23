@@ -37,4 +37,8 @@ The plugin includes a simple configuration panel with:
 Released under the GPL license.
 
 ## Author
-Design Cart – https://www.designcart.pl
+<p>Design Cart – https://www.designcart.pl</p>
+<p>👨‍💻 author: <a href="https://www.designcart.pl/pawel-nosko.html">Paweł Nosko</a></p>
+<p>Project page: <a href="https://www.designcart.pl/laboratorium/264-jak-zoptymalizowac-obrazy-na-stronie-internetowej-joomla-gotowe-narzedzie.html">DC JWEBP</a></p>
+
+
