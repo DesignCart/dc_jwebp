@@ -1,0 +1,107 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Lint and package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+          tools: composer
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dev tools
+        run: composer install --no-interaction --no-progress
+
+      - name: Check tag against manifest version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: php bin/package.php --check-tag="$GITHUB_REF_NAME"
+
+      - name: Rector, PHPCS and package
+        run: composer production
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-zip
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download ZIP
+        uses: actions/download-artifact@v8
+        with:
+          name: plugin-zip
+          path: dist
+
+      # In a fork, mark the release as a fork build and point to the original repository.
+      # In the original repository the parent is empty and no notice is added.
+      - name: Prepare fork notice
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          parent=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.parent.full_name // empty')
+          : > release-notes.md
+          if [ -n "$parent" ]; then
+            {
+              echo "> **Fork build.** This is not an official release of [$parent](https://github.com/$parent)."
+              echo "> It is built from the fork [$GITHUB_REPOSITORY](https://github.com/$GITHUB_REPOSITORY)."
+              echo "> Licensed under GPL-3.0; the modifications and their dates are listed in"
+              echo "> [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md)."
+              echo
+            } >> release-notes.md
+            echo "title_suffix= (fork build)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE_SUFFIX: ${{ steps.notes.outputs.title_suffix }}
+        run: |
+          args=(--repo "$GITHUB_REPOSITORY" --title "${GITHUB_REF_NAME}${TITLE_SUFFIX}" --generate-notes --verify-tag)
+          # gh prepends these notes to the generated ones.
+          if [ -s release-notes.md ]; then
+            args+=(--notes-file release-notes.md)
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/*.zip "${args[@]}"
