@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="system" method="upgrade">
+	<name>PLG_SYSTEM_DC_JWEBP</name>
+	<author>Design Cart</author>
+	<creationDate>2025-01-01</creationDate>
+	<copyright>Design Cart</copyright>
+	<license>GNU General Public License version 3; see LICENSE.md</license>
+	<version>1.2.0</version>
+	<description>PLG_SYSTEM_DC_JWEBP_XML_DESCRIPTION</description>
+	<namespace path="src">DesignCart\Plugin\System\DcJwebp</namespace>
+
+	<files>
+		<folder plugin="dc_jwebp">services</folder>
+		<folder>src</folder>
+		<filename>script.php</filename>
+	</files>
+
+	<scriptfile>script.php</scriptfile>
+
+	<languages>
+		<language tag="en-GB">language/en-GB/plg_system_dc_jwebp.ini</language>
+		<language tag="en-GB">language/en-GB/plg_system_dc_jwebp.sys.ini</language>
+		<language tag="de-DE">language/de-DE/plg_system_dc_jwebp.ini</language>
+		<language tag="de-DE">language/de-DE/plg_system_dc_jwebp.sys.ini</language>
+		<language tag="pl-PL">language/pl-PL/plg_system_dc_jwebp.ini</language>
+		<language tag="pl-PL">language/pl-PL/plg_system_dc_jwebp.sys.ini</language>
+	</languages>
+
+	<config>
+		<fields name="params">
+			<fieldset name="basic" label="PLG_SYSTEM_DC_JWEBP_FIELD_SETTINGS_LABEL">
+
+				<field
+					name="quality"
+					type="number"
+					label="PLG_SYSTEM_DC_JWEBP_FIELD_QUALITY_LABEL"
+					description="PLG_SYSTEM_DC_JWEBP_FIELD_QUALITY_DESC"
+					default="85"
+					min="0"
+					max="100"
+				/>
+
+				<field
+					name="exclude"
+					type="textarea"
+					label="PLG_SYSTEM_DC_JWEBP_FIELD_EXCLUDE_LABEL"
+					description="PLG_SYSTEM_DC_JWEBP_FIELD_EXCLUDE_DESC"
+				/>
+
+				<field
+					name="max_per_request"
+					type="number"
+					label="PLG_SYSTEM_DC_JWEBP_FIELD_MAX_PER_REQUEST_LABEL"
+					description="PLG_SYSTEM_DC_JWEBP_FIELD_MAX_PER_REQUEST_DESC"
+					default="5"
+					min="1"
+					filter="integer"
+				/>
+
+				<field
+					name="lazyload"
+					type="radio"
+					label="PLG_SYSTEM_DC_JWEBP_FIELD_LAZYLOAD_LABEL"
+					description="PLG_SYSTEM_DC_JWEBP_FIELD_LAZYLOAD_DESC"
+					default="1"
+				>
+					<option value="1">PLG_SYSTEM_DC_JWEBP_OPTION_ENABLED</option>
+					<option value="0">PLG_SYSTEM_DC_JWEBP_OPTION_DISABLED</option>
+				</field>
+
+				<field
+					name="lazy_skip"
+					type="number"
+					label="PLG_SYSTEM_DC_JWEBP_FIELD_LAZY_SKIP_LABEL"
+					description="PLG_SYSTEM_DC_JWEBP_FIELD_LAZY_SKIP_DESC"
+					default="2"
+					min="0"
+					filter="integer"
+					showon="lazyload:1"
+				/>
+
+			</fieldset>
+		</fields>
+	</config>
+</extension>
