@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1 – 2026-11-27
+
+Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.
+
+- Fixed: the plugin settings were never saved, because the manifest lacked `<fields name="params">`. Quality, excluded paths and the lazy loading switch now take effect.
+- Fixed: a broken or wrongly named image, or GD without WebP support, caused a fatal error on the page. The conversion now checks the real image type, catches GD errors and skips images over 25 megapixels.
+- Fixed: the path was replaced even when the conversion failed, which led to broken images. It is now replaced only when a WebP exists that is smaller than the original.
+- Fixed: the WebP is re-created when the original is newer. It is written to a temporary file first, so parallel requests never see half-written files.
+- Fixed: `str_replace` replaced the path everywhere in the page (links, `data-src`, other paths ending the same way). Only the `src` attribute and `background-image` URLs are rewritten now, and `data-src` is no longer mistaken for `src`.
+- Fixed: lazy loading changed `<img` inside `<script>`, `<template>` and `<noscript>`, which could break JavaScript.
+- Fixed: paths with `../` could point outside the Joomla root. They are resolved and rejected now.
+- Fixed: the plugin ran for every output format. It now runs only for HTML pages on the site.
+- JPEG photos are rotated according to their EXIF orientation (3, 6, 8).
+- PNG transparency is kept (alpha blending off while saving).
+
 ## 1.1.0 – 2026-11-27
 
 Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27, based on DC JWebP 1.0.0 by Design Cart.

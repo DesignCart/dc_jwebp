@@ -4,10 +4,11 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 
 ## Features
 - Automatic JPG/PNG → WebP conversion  
-- Replaces image paths in the final HTML output  
-- Supports <img> and inline CSS background-image  
-- Native lazy loading (`loading="lazy"`) — no JavaScript required  
-- Converts images only once, then serves cached WebP files  
+- Replaces the `src` of `<img>` tags and inline CSS `background-image` URLs in the final HTML output; other occurrences of a path (links, `data-src`, scripts) stay untouched  
+- Native lazy loading (`loading="lazy"`) — no JavaScript required; content of `<script>`, `<template>` and `<noscript>` is never changed  
+- Converts each image once and re-creates the WebP when the original changes; keeps the original when the WebP would not be smaller  
+- Broken, unsupported or very large images (over 25 megapixels) are skipped instead of breaking the page; JPEG photos are rotated according to their EXIF orientation  
+- Handles relative image URLs of files inside the Joomla root only (paths that leave the root via `../` are ignored)  
 - Compatible with Joomla 5 and 6  
 - Works with SP Page Builder, Helix Ultimate, YOOtheme, and custom templates  
 - Zero impact on database or template files  
