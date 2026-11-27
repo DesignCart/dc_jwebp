@@ -67,7 +67,7 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
         $quality     = (int) $this->params->get('quality', 85);
         $exclude     = trim((string) $this->params->get('exclude', ''));
         $lazyload    = (int) $this->params->get('lazyload', 1);
-        $excludeList = array_filter(array_map('trim', explode("\n", $exclude)));
+        $excludeList = array_filter(array_map(trim(...), explode("\n", $exclude)));
 
         preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $body, $imgMatches);
 
