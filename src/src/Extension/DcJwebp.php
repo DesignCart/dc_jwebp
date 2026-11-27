@@ -4,7 +4,7 @@
  * @package     DC JWebP
  * @subpackage  System Plugin
  *
- * @version     1.3.0
+ * @version     1.3.1
  * @copyright   Design Cart
  * @license     GNU General Public License version 3; see LICENSE.md
  * @author      Design Cart
@@ -17,17 +17,20 @@
  * subdirectory installs, exclusion by path, lazy loading skip, conversion
  * limit per request, lossless PNG.
  * Modified 2026-11-27 by jswebschmiede: conversion on upload in the media manager.
+ * Modified 2026-11-27 by jswebschmiede: list the WebP copy in the media manager right after upload.
  */
 
 declare(strict_types=1);
 
 namespace DesignCart\Plugin\System\DcJwebp\Extension;
 
+use Joomla\CMS\Application\CMSWebApplicationInterface;
 use Joomla\CMS\Application\SiteApplication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Event\Application\AfterRenderEvent;
 use Joomla\CMS\Event\Model\AfterSaveEvent;
 use Joomla\CMS\Event\Model\BeforeSaveEvent;
+use Joomla\CMS\Document\HtmlDocument;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Event\EventInterface;
@@ -83,6 +86,62 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
     private const UPLOAD_REPLACE = 2;
 
     /**
+     * Reloads the media manager folder after an upload, so the WebP copy written in "Add WebP"
+     * mode is listed right away. The media manager only adds the one file the server returns.
+     *
+     * It uses the Vuex store of the media manager app (store.subscribe, the getContents action
+     * and the UPLOAD_SUCCESS, SELECT_DIRECTORY and SELECT_BROWSER_ITEM mutations of Joomla 5/6).
+     * When the store cannot be found, nothing happens. getContents clears the selection, so in
+     * a modal the uploaded file the media manager had selected is selected again.
+     *
+     * @since  1.3.1
+     */
+    private const MEDIA_MANAGER_RELOAD_SCRIPT = <<<'JS'
+        (() => {
+          const attach = (tries) => {
+            const store = document.getElementById('com-media')?.__vue_app__?.config?.globalProperties?.$store;
+
+            if (!store || typeof store.subscribe !== 'function' || typeof store.dispatch !== 'function') {
+              if (tries > 0) {
+                window.setTimeout(() => attach(tries - 1), 200);
+              }
+
+              return;
+            }
+
+            const inModal = window.location !== window.parent.location;
+            let timer = 0;
+            let reselect = null;
+
+            store.subscribe((mutation, state) => {
+              if (mutation.type === 'UPLOAD_SUCCESS') {
+                reselect = inModal && mutation.payload ? mutation.payload.path : null;
+                window.clearTimeout(timer);
+                timer = window.setTimeout(() => store.dispatch('getContents', state.selectedDirectory), 300);
+
+                return;
+              }
+
+              if (mutation.type === 'SELECT_DIRECTORY' && reselect !== null) {
+                const file = state.files.find((item) => item.path === reselect);
+                reselect = null;
+
+                if (file) {
+                  store.commit('SELECT_BROWSER_ITEM', file);
+                }
+              }
+            });
+          };
+
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => attach(50));
+          } else {
+            attach(50);
+          }
+        })();
+        JS;
+
+    /**
      * WebP quality for JPEG images (0-100).
      *
      * @var    int
@@ -133,6 +192,7 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
     {
         return [
             'onAfterRender'       => 'onAfterRender',
+            'onBeforeCompileHead' => 'onBeforeCompileHead',
             // Low priority: media-action plugins such as Resize change the upload first,
             // so the WebP is encoded from the final image.
             'onContentBeforeSave' => ['onContentBeforeSave', Priority::LOW],
@@ -284,6 +344,34 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
 
         if ($webp !== null && $webp !== $src) {
             $this->convertToWebp($src, $webp, false);
+        }
+    }
+
+    /**
+     * Adds the reload script to media manager pages in "Add WebP" mode.
+     *
+     * @param   EventInterface  $event  Before-compile-head event
+     *
+     * @return  void
+     *
+     * @since   1.3.1
+     */
+    public function onBeforeCompileHead(EventInterface $event): void
+    {
+        $app = $this->getApplication();
+
+        if (
+            $this->uploadMode() !== self::UPLOAD_ADD
+            || !$app instanceof CMSWebApplicationInterface
+            || $app->getInput()->getCmd('option') !== 'com_media'
+        ) {
+            return;
+        }
+
+        $document = $app->getDocument();
+
+        if ($document instanceof HtmlDocument) {
+            $document->getWebAssetManager()->addInlineScript(self::MEDIA_MANAGER_RELOAD_SCRIPT);
         }
     }
 

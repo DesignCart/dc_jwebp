@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 – 2026-11-27
+
+Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.
+
+- "Add WebP" mode: the media manager reloads the folder after an upload, so the WebP copy is listed right away instead of only after reloading the page. In the media field modal the uploaded file stays selected.
+
 ## 1.3.0 – 2026-11-27
 
 Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.

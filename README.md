@@ -32,7 +32,7 @@ Applies to JPG/PNG files uploaded in the media manager (local filesystem adapter
 | Mode | Result |
 |---|---|
 | **Off** (default) | Nothing happens on upload. The WebP is created when a page that shows the image is viewed. |
-| **Add WebP** | The original is stored and a WebP copy is written next to it right away. Saving an image in the image editor refreshes the copy. |
+| **Add WebP** | The original is stored and a WebP copy is written next to it right away. The media manager reloads the folder after the upload, so the copy is listed without reloading the page. Saving an image in the image editor refreshes the copy. |
 | **WebP only** | Only the WebP file is stored; the original never reaches the server. The media manager lists and inserts the `.webp` file, so no rewriting is needed later. |
 
 In "WebP only" mode the upload is stored unchanged (as JPG/PNG) when the conversion fails, the WebP is not smaller, a file with the WebP name already exists, the upload replaces an existing file, the folder is excluded, or the media manager settings do not allow WebP files (Legal Extensions, Legal Image Extensions, Legal MIME Types). Images saved in the image editor keep their format.
@@ -44,6 +44,8 @@ Keep in mind for "WebP only":
 Files uploaded by FTP or by other extensions are not affected and are converted when a page is viewed. Existing images are never changed or deleted.
 
 The conversion runs after media-action plugins such as Resize, so the WebP is made from the resized image.
+
+The folder reload in "Add WebP" mode uses internals of the media manager app of Joomla 5/6. If a later Joomla version changes them, the copy is only listed after reloading the page; uploading is not affected.
 
 ## Limitations
 - `<picture>`/`<source srcset>`, external CSS files and the shorthand `background: url(...)` are not rewritten.
@@ -90,7 +92,7 @@ Runs Rector (dry-run) and PHPCS and stops on any finding. Then it packs `src/` a
 
 ## Releasing
 1. Raise `<version>` in `src/dc_jwebp.xml` and add an entry to `CHANGELOG.md`.
-2. Commit, then tag and push: `git tag v1.3.0 && git push origin v1.3.0`.
+2. Commit, then tag and push: `git tag v1.3.1 && git push origin v1.3.1`.
 3. The GitHub Actions workflow checks that the tag matches the manifest version, runs the same checks, and creates the GitHub release with the ZIP attached.
 
 In a fork, the workflow titles the release `vX.Y.Z (fork build)` and puts a notice in front of the release notes. The notice links to the original repository and to `CHANGELOG.md`. In the original repository, no notice is added.

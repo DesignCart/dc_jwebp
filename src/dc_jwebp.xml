@@ -5,7 +5,7 @@
 	<creationDate>2025-01-01</creationDate>
 	<copyright>Design Cart</copyright>
 	<license>GNU General Public License version 3; see LICENSE.md</license>
-	<version>1.3.0</version>
+	<version>1.3.1</version>
 	<description>PLG_SYSTEM_DC_JWEBP_XML_DESCRIPTION</description>
 	<namespace path="src">DesignCart\Plugin\System\DcJwebp</namespace>
 
