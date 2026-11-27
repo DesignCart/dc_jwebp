@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 – 2026-11-27
+
+Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.
+
+- New setting "Conversion on Upload" (default Off) for JPG/PNG files uploaded in the media manager:
+  - "Add WebP" writes a WebP copy next to the uploaded original right away; saving in the image editor refreshes it.
+  - "WebP only" stores only the WebP file. The upload stays unchanged when the conversion fails, the WebP is not smaller, the WebP name or the uploaded file already exists, the folder is excluded, or the media manager does not allow WebP.
+- The upload conversion runs after media-action plugins such as Resize and uses the same rules as page rendering (quality, excluded folders, pixel limit, EXIF rotation, lossless PNG). It does not count towards the limit per page view.
+
 ## 1.2.0 – 2026-11-27
 
 Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.

@@ -4,7 +4,7 @@
  * @package     DC JWebP
  * @subpackage  System Plugin
  *
- * @version     1.2.0
+ * @version     1.3.0
  * @copyright   Design Cart
  * @license     GNU General Public License version 3; see LICENSE.md
  * @author      Design Cart
@@ -16,6 +16,7 @@
  * Modified 2026-11-27 by jswebschmiede: srcset, absolute URLs, query strings,
  * subdirectory installs, exclusion by path, lazy loading skip, conversion
  * limit per request, lossless PNG.
+ * Modified 2026-11-27 by jswebschmiede: conversion on upload in the media manager.
  */
 
 declare(strict_types=1);
@@ -23,10 +24,16 @@ declare(strict_types=1);
 namespace DesignCart\Plugin\System\DcJwebp\Extension;
 
 use Joomla\CMS\Application\SiteApplication;
+use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Event\Application\AfterRenderEvent;
+use Joomla\CMS\Event\Model\AfterSaveEvent;
+use Joomla\CMS\Event\Model\BeforeSaveEvent;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
+use Joomla\Event\EventInterface;
+use Joomla\Event\Priority;
 use Joomla\Event\SubscriberInterface;
+use Joomla\Filesystem\File;
 
 // phpcs:disable PSR1.Files.SideEffects
 \defined('_JEXEC') or die;
@@ -34,6 +41,7 @@ use Joomla\Event\SubscriberInterface;
 
 /**
  * Converts JPG/PNG images referenced in the site output to WebP and enables native lazy loading.
+ * Optionally converts JPG/PNG files when they are uploaded in the media manager.
  *
  * @since  1.0.0
  */
@@ -52,6 +60,27 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
      * @since  1.1.1
      */
     private const MAX_PIXELS = 25_000_000;
+
+    /**
+     * Upload mode: uploads in the media manager are not converted.
+     *
+     * @since  1.3.0
+     */
+    private const UPLOAD_OFF = 0;
+
+    /**
+     * Upload mode: a WebP copy is written next to the uploaded original.
+     *
+     * @since  1.3.0
+     */
+    private const UPLOAD_ADD = 1;
+
+    /**
+     * Upload mode: only the WebP version is stored, the original is never written.
+     *
+     * @since  1.3.0
+     */
+    private const UPLOAD_REPLACE = 2;
 
     /**
      * WebP quality for JPEG images (0-100).
@@ -103,7 +132,11 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            'onAfterRender' => 'onAfterRender',
+            'onAfterRender'       => 'onAfterRender',
+            // Low priority: media-action plugins such as Resize change the upload first,
+            // so the WebP is encoded from the final image.
+            'onContentBeforeSave' => ['onContentBeforeSave', Priority::LOW],
+            'onContentAfterSave'  => ['onContentAfterSave', Priority::LOW],
         ];
     }
 
@@ -132,14 +165,9 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
         }
 
         $this->root          = $root;
-        $this->quality       = max(0, min(100, (int) $this->params->get('quality', 85)));
         $this->maxPerRequest = max(1, (int) $this->params->get('max_per_request', 5));
         $this->conversions   = 0;
-        $exclude             = (string) $this->params->get('exclude', '');
-        $this->excludeList   = array_values(array_filter(array_map(
-            static fn (string $line): string => trim(str_replace('\\', '/', trim($line)), '/'),
-            explode("\n", $exclude)
-        )));
+        $this->loadSettings();
 
         $body = $this->rewrite((string) $app->getBody());
 
@@ -148,6 +176,252 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
         }
 
         $app->setBody($body);
+    }
+
+    /**
+     * Stores only the WebP version of a JPG/PNG uploaded in the media manager (mode "WebP only").
+     *
+     * The uploaded data and file name are replaced before Joomla writes the file, so the original
+     * never reaches the disk and the media manager lists and inserts the .webp file. The upload
+     * stays unchanged when the conversion fails, the WebP is not smaller, a file with the WebP name
+     * already exists, or the media manager settings do not allow WebP files. Only new files are
+     * handled; files saved by the image editor keep their format.
+     *
+     * @param   EventInterface  $event  Before-save event
+     *
+     * @return  void
+     *
+     * @since   1.3.0
+     */
+    public function onContentBeforeSave(EventInterface $event): void
+    {
+        if (
+            !$event instanceof BeforeSaveEvent
+            || $event->getContext() !== 'com_media.file'
+            || !$event->getIsNew()
+            || $this->uploadMode() !== self::UPLOAD_REPLACE
+        ) {
+            return;
+        }
+
+        $item   = $event->getItem();
+        $folder = $this->uploadFolder($item);
+        $name   = (string) ($item->name ?? '');
+        $data   = $item->data ?? null;
+
+        if ($folder === null || !\is_string($data) || $data === '' || preg_match(self::IMAGE_EXTENSION, $name) !== 1) {
+            return;
+        }
+
+        $this->loadSettings();
+
+        if ($this->isExcluded($folder . DIRECTORY_SEPARATOR . $name) || !$this->webpUploadAllowed()) {
+            return;
+        }
+
+        $webpName = preg_replace(self::IMAGE_EXTENSION, '.webp', $name);
+
+        // Never overwrite an existing WebP file. An upload that replaces an existing original stays
+        // as it is, so the old original is not left behind. The local adapter stores safe names.
+        if (
+            $webpName === null
+            || is_file($folder . DIRECTORY_SEPARATOR . File::makeSafe($webpName))
+            || is_file($folder . DIRECTORY_SEPARATOR . File::makeSafe($name))
+        ) {
+            return;
+        }
+
+        $webp = $this->encodeUpload($data, strtolower(pathinfo($name, PATHINFO_EXTENSION)));
+
+        if ($webp === null || \strlen($webp) >= \strlen($data)) {
+            return;
+        }
+
+        $item->data      = $webp;
+        $item->name      = $webpName;
+        $item->extension = 'webp';
+    }
+
+    /**
+     * Writes a WebP copy next to a JPG/PNG saved in the media manager (mode "Add WebP").
+     *
+     * Runs for new uploads and for images saved by the image editor, so the copy is never older
+     * than the original. Whether the copy is used is decided when a page is rendered.
+     *
+     * @param   EventInterface  $event  After-save event
+     *
+     * @return  void
+     *
+     * @since   1.3.0
+     */
+    public function onContentAfterSave(EventInterface $event): void
+    {
+        if (
+            !$event instanceof AfterSaveEvent
+            || $event->getContext() !== 'com_media.file'
+            || $this->uploadMode() !== self::UPLOAD_ADD
+        ) {
+            return;
+        }
+
+        $item   = $event->getItem();
+        $folder = $this->uploadFolder($item);
+        $name   = (string) ($item->name ?? '');
+
+        if ($folder === null || preg_match(self::IMAGE_EXTENSION, $name) !== 1) {
+            return;
+        }
+
+        $src = $folder . DIRECTORY_SEPARATOR . $name;
+
+        $this->loadSettings();
+
+        if (!is_file($src) || $this->isExcluded($src)) {
+            return;
+        }
+
+        $webp = preg_replace(self::IMAGE_EXTENSION, '.webp', $src);
+
+        if ($webp !== null && $webp !== $src) {
+            $this->convertToWebp($src, $webp, false);
+        }
+    }
+
+    /**
+     * Reads the settings shared by page rendering and upload conversion.
+     *
+     * @return  void
+     *
+     * @since   1.3.0
+     */
+    private function loadSettings(): void
+    {
+        $this->quality     = max(0, min(100, (int) $this->params->get('quality', 85)));
+        $exclude           = (string) $this->params->get('exclude', '');
+        $this->excludeList = array_values(array_filter(array_map(
+            static fn (string $line): string => trim(str_replace('\\', '/', trim($line)), '/'),
+            explode("\n", $exclude)
+        )));
+    }
+
+    /**
+     * Returns the configured upload mode.
+     *
+     * @return  int  One of the UPLOAD_* constants
+     *
+     * @since   1.3.0
+     */
+    private function uploadMode(): int
+    {
+        $mode = (int) $this->params->get('upload_mode', self::UPLOAD_OFF);
+
+        return \in_array($mode, [self::UPLOAD_ADD, self::UPLOAD_REPLACE], true) ? $mode : self::UPLOAD_OFF;
+    }
+
+    /**
+     * Returns the folder a media manager file is saved in.
+     *
+     * Only the local filesystem adapter is supported. Its adapter name is "local-<directory>",
+     * where the directory is relative to JPATH_ROOT (see plg_filesystem_local).
+     *
+     * @param   object  $item  File object of the media manager save event
+     *
+     * @return  string|null  Absolute folder path inside the Joomla root, or null
+     *
+     * @since   1.3.0
+     */
+    private function uploadFolder(object $item): ?string
+    {
+        $adapter = (string) ($item->adapter ?? '');
+        $root    = realpath(JPATH_ROOT);
+
+        if ($root === false || !str_starts_with($adapter, 'local-')) {
+            return null;
+        }
+
+        $folder = realpath($root . '/' . substr($adapter, 6) . '/' . ltrim((string) ($item->path ?? ''), '/'));
+
+        if ($folder === false || !is_dir($folder) || !str_starts_with($folder . DIRECTORY_SEPARATOR, $root . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        $this->root = $root;
+
+        return $folder;
+    }
+
+    /**
+     * Checks whether the media manager settings accept WebP uploads.
+     *
+     * Mirrors the extension and MIME checks Joomla applies when the file is written, so a
+     * replaced upload is never rejected because of the new format.
+     *
+     * @return  bool
+     *
+     * @since   1.3.0
+     */
+    private function webpUploadAllowed(): bool
+    {
+        $params = ComponentHelper::getParams('com_media');
+        $list   = static fn (string $key, string $default): array => array_map(
+            trim(...),
+            explode(',', (string) $params->get($key, $default))
+        );
+
+        if (
+            !\in_array('webp', $list('restrict_uploads_extensions', 'webp'), true)
+            || !\in_array('webp', $list('image_extensions', 'webp'), true)
+        ) {
+            return false;
+        }
+
+        if ((int) $params->get('restrict_uploads', 1) && (int) $params->get('check_mime', 1)) {
+            return \in_array('image/webp', $list('upload_mime', 'image/webp'), true);
+        }
+
+        return true;
+    }
+
+    /**
+     * Converts uploaded JPG/PNG data to WebP data.
+     *
+     * The data is written to a temporary file, so the same conversion as for page rendering is
+     * used (type check, pixel limit, EXIF rotation, lossless PNG). Temporary files are removed.
+     *
+     * @param   string  $data       Uploaded file content
+     * @param   string  $extension  Lower-case extension of the uploaded file
+     *
+     * @return  string|null  WebP data, or null when the conversion failed
+     *
+     * @since   1.3.0
+     */
+    private function encodeUpload(string $data, string $extension): ?string
+    {
+        $tmpDir = (string) $this->getApplication()->get('tmp_path', '');
+
+        if ($tmpDir === '' || !is_dir($tmpDir) || !is_writable($tmpDir)) {
+            $tmpDir = sys_get_temp_dir();
+        }
+
+        $base = rtrim($tmpDir, '/\\') . DIRECTORY_SEPARATOR . 'dc_jwebp-' . bin2hex(random_bytes(8));
+        $src  = $base . '.' . $extension;
+        $dest = $base . '.webp';
+
+        try {
+            if (@file_put_contents($src, $data) === false || !$this->convertToWebp($src, $dest, false)) {
+                return null;
+            }
+
+            $webp = @file_get_contents($dest);
+
+            return \is_string($webp) && $webp !== '' ? $webp : null;
+        } finally {
+            foreach ([$src, $dest] as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
     }
 
     /**
@@ -342,14 +616,15 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
      * PNGs are saved lossless. The WebP is written to a temporary file and renamed, so no request
      * ever sees a partly written file. Any GD error returns false.
      *
-     * @param   string  $src   Absolute path of the source image
-     * @param   string  $dest  Absolute path of the WebP file
+     * @param   string  $src      Absolute path of the source image
+     * @param   string  $dest     Absolute path of the WebP file
+     * @param   bool    $limited  Whether the conversion counts towards the limit per request
      *
      * @return  bool  True when the WebP file was written
      *
      * @since   1.0.0
      */
-    private function convertToWebp(string $src, string $dest): bool
+    private function convertToWebp(string $src, string $dest, bool $limited = true): bool
     {
         if (!function_exists('imagewebp') || !is_writable(\dirname($dest))) {
             return false;
@@ -365,12 +640,14 @@ final class DcJwebp extends CMSPlugin implements SubscriberInterface
             }
 
             // Only decoding is expensive, so only images that get this far count towards the limit.
-            // The remaining images are converted on the next requests.
-            if ($this->conversions >= $this->maxPerRequest) {
-                return false;
-            }
+            // The remaining images are converted on the next requests. Uploads are not limited.
+            if ($limited) {
+                if ($this->conversions >= $this->maxPerRequest) {
+                    return false;
+                }
 
-            ++$this->conversions;
+                ++$this->conversions;
+            }
 
             $img = match ($info[2]) {
                 IMAGETYPE_JPEG => @imagecreatefromjpeg($src),

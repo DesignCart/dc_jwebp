@@ -11,6 +11,7 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 - Handles relative URLs and absolute URLs of the own domain, with query strings, URL encoding and Joomla installed in a subdirectory; paths that leave the Joomla root via `../` and images on other domains are ignored  
 - PNG images are saved as lossless WebP, so logos and graphics stay sharp  
 - Converts at most a set number of images per page view, so the first visit of a page with many images stays fast  
+- Optional conversion on upload in the media manager: add a WebP copy right away, or store only the WebP file  
 - Compatible with Joomla 5 and 6  
 - Works with SP Page Builder, Helix Ultimate, YOOtheme, and custom templates  
 - Zero impact on database or template files  
@@ -19,10 +20,30 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 ## Configuration
 The plugin includes a simple configuration panel with:
 - WebP quality for JPEG images (0–100)  
+- Conversion on upload (default Off), see below  
 - Excluded folders, one per line, relative to the Joomla root (e.g. `images/headers`)  
 - Maximum conversions per page view (default 5)  
 - Lazy loading on/off  
 - Number of images at the top of the page that are not lazy loaded (default 2)  
+
+### Conversion on upload
+Applies to JPG/PNG files uploaded in the media manager (local filesystem adapter):
+
+| Mode | Result |
+|---|---|
+| **Off** (default) | Nothing happens on upload. The WebP is created when a page that shows the image is viewed. |
+| **Add WebP** | The original is stored and a WebP copy is written next to it right away. Saving an image in the image editor refreshes the copy. |
+| **WebP only** | Only the WebP file is stored; the original never reaches the server. The media manager lists and inserts the `.webp` file, so no rewriting is needed later. |
+
+In "WebP only" mode the upload is stored unchanged (as JPG/PNG) when the conversion fails, the WebP is not smaller, a file with the WebP name already exists, the upload replaces an existing file, the folder is excluded, or the media manager settings do not allow WebP files (Legal Extensions, Legal Image Extensions, Legal MIME Types). Images saved in the image editor keep their format.
+
+Keep in mind for "WebP only":
+- The original is not kept. Converting a JPEG to lossy WebP loses a little quality, and this cannot be undone.
+- Some e-mail clients (for example Outlook for Windows) do not show WebP. Use "Add WebP" when images from the media folder are used in newsletters.
+
+Files uploaded by FTP or by other extensions are not affected and are converted when a page is viewed. Existing images are never changed or deleted.
+
+The conversion runs after media-action plugins such as Resize, so the WebP is made from the resized image.
 
 ## Limitations
 - `<picture>`/`<source srcset>`, external CSS files and the shorthand `background: url(...)` are not rewritten.
@@ -69,7 +90,7 @@ Runs Rector (dry-run) and PHPCS and stops on any finding. Then it packs `src/` a
 
 ## Releasing
 1. Raise `<version>` in `src/dc_jwebp.xml` and add an entry to `CHANGELOG.md`.
-2. Commit, then tag and push: `git tag v1.2.0 && git push origin v1.2.0`.
+2. Commit, then tag and push: `git tag v1.3.0 && git push origin v1.3.0`.
 3. The GitHub Actions workflow checks that the tag matches the manifest version, runs the same checks, and creates the GitHub release with the ZIP attached.
 
 In a fork, the workflow titles the release `vX.Y.Z (fork build)` and puts a notice in front of the release notes. The notice links to the original repository and to `CHANGELOG.md`. In the original repository, no notice is added.
