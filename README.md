@@ -8,7 +8,7 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 - Supports <img> and inline CSS background-image  
 - Native lazy loading (`loading="lazy"`) — no JavaScript required  
 - Converts images only once, then serves cached WebP files  
-- Compatible with Joomla 4, 5, and 6  
+- Compatible with Joomla 5 and 6  
 - Works with SP Page Builder, Helix Ultimate, YOOtheme, and custom templates  
 - Zero impact on database or template files  
 - No external libraries required (uses PHP GD)
@@ -25,16 +25,45 @@ The plugin includes a simple configuration panel with:
 3. Enable the plugin under **System → Plugins → System – DC JWebP**.  
 4. (Optional) Adjust quality or excluded paths.
 
+Upgrading from 1.0.0 works in place; the installer removes the files of the old layout.
+
 ## Compatibility
-- Joomla 4.x, 5.x, 6.x  
-- PHP 8.1 – 8.3  
+- Joomla 5.x, 6.x  
+- PHP 8.1 or newer (Joomla 6 requires PHP 8.3)  
+- PHP GD extension with WebP support  
 - SP Page Builder  
 - Helix Ultimate  
 - YOOtheme  
 - Any Bootstrap-based or custom template
 
+## Languages
+English (en-GB), German (de-DE), Polish (pl-PL)
+
+## Development
+The installable plugin lives in `src/`. PHP tooling runs through Composer:
+
+```
+composer install                # Rector and PHP_CodeSniffer (dev only)
+composer php:lint               # PHPCS (PSR-12)
+composer php:rector             # Rector dry-run (PHP 8.1 set)
+composer php:rector:fix:lint    # apply Rector, then phpcbf and PHPCS
+```
+
+## Building
+```
+composer production
+```
+Runs Rector (dry-run) and PHPCS and stops on any finding. Then it packs `src/` and `LICENSE.md` into `dist/plg_system_dc_jwebp-<version>.zip`, ready for **Extensions → Install**.
+
+## Releasing
+1. Raise `<version>` in `src/dc_jwebp.xml` and add an entry to `CHANGELOG.md`.
+2. Commit, then tag and push: `git tag v1.2.0 && git push origin v1.2.0`.
+3. The GitHub Actions workflow checks that the tag matches the manifest version, runs the same checks, and creates the GitHub release with the ZIP attached.
+
+In a fork, the workflow titles the release `vX.Y.Z (fork build)` and puts a notice in front of the release notes. The notice links to the original repository and to `CHANGELOG.md`. In the original repository, no notice is added.
+
 ## License
-Released under the GPL license.
+GNU General Public License version 3, see [LICENSE.md](LICENSE.md). Changes to the original release are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Author
 <p>Design Cart – https://www.designcart.pl</p>
