@@ -4,11 +4,13 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 
 ## Features
 - Automatic JPG/PNG → WebP conversion  
-- Replaces the `src` of `<img>` tags and inline CSS `background-image` URLs in the final HTML output; other occurrences of a path (links, `data-src`, scripts) stay untouched  
-- Native lazy loading (`loading="lazy"`) — no JavaScript required; content of `<script>`, `<template>` and `<noscript>` is never changed  
+- Replaces `src` and `srcset` of `<img>` tags and inline CSS `background-image` URLs in the final HTML output; other occurrences of a path (links, `data-src`, scripts) stay untouched  
+- Native lazy loading (`loading="lazy"`) — no JavaScript required; the first images of the page and images with `fetchpriority` load immediately, and content of `<script>`, `<template>` and `<noscript>` is never changed  
 - Converts each image once and re-creates the WebP when the original changes; keeps the original when the WebP would not be smaller  
 - Broken, unsupported or very large images (over 25 megapixels) are skipped instead of breaking the page; JPEG photos are rotated according to their EXIF orientation  
-- Handles relative image URLs of files inside the Joomla root only (paths that leave the root via `../` are ignored)  
+- Handles relative URLs and absolute URLs of the own domain, with query strings, URL encoding and Joomla installed in a subdirectory; paths that leave the Joomla root via `../` and images on other domains are ignored  
+- PNG images are saved as lossless WebP, so logos and graphics stay sharp  
+- Converts at most a set number of images per page view, so the first visit of a page with many images stays fast  
 - Compatible with Joomla 5 and 6  
 - Works with SP Page Builder, Helix Ultimate, YOOtheme, and custom templates  
 - Zero impact on database or template files  
@@ -16,9 +18,18 @@ DC JWebP is a lightweight and fully automatic Joomla system plugin that optimize
 
 ## Configuration
 The plugin includes a simple configuration panel with:
-- WebP quality (0–100)  
-- Excluded folders  
+- WebP quality for JPEG images (0–100)  
+- Excluded folders, one per line, relative to the Joomla root (e.g. `images/headers`)  
+- Maximum conversions per page view (default 5)  
 - Lazy loading on/off  
+- Number of images at the top of the page that are not lazy loaded (default 2)  
+
+## Limitations
+- `<picture>`/`<source srcset>`, external CSS files and the shorthand `background: url(...)` are not rewritten.
+- Browsers without WebP support get no fallback.
+- Images reached through a symbolic link that points outside the Joomla root are skipped.
+- GD drops ICC colour profiles; mirrored EXIF orientations (2, 4, 5, 7) are not corrected.
+- Uninstalling the plugin leaves the generated `.webp` files next to the originals. The plugin cannot tell them apart from WebP files you uploaded yourself, so remove them manually if needed (for example `find images -name '*.webp'` and check the list before deleting).
 
 ## Installation
 1. Download the ZIP package.  

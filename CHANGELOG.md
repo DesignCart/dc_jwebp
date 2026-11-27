@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 – 2026-11-27
+
+Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.
+
+- `srcset` of `<img>` tags is rewritten, candidate by candidate.
+- Absolute URLs of the own domain, query strings (`?v=2`), fragments such as `#joomlaImage://…`, URL-encoded paths and Joomla in a subdirectory are handled. Query string and fragment are kept.
+- **Changed:** excluded paths are folders relative to the Joomla root (e.g. `images/headers`) and also cover their subfolders. Before, any part of the URL matched. Check your entries after updating.
+- New setting "Images without Lazy Loading" (default 2): the first images of the page stay eager; images with `fetchpriority` too.
+- New setting "Max. Conversions per Request" (default 5): the remaining images are converted on the next page views. Only images that are actually decoded count.
+- PNG images are saved as lossless WebP.
+- README: limitations, and what happens to the `.webp` files when the plugin is uninstalled.
+
 ## 1.1.1 – 2026-11-27
 
 Modified by jswebschmiede (https://github.com/jswebschmiede) on 2026-11-27.
