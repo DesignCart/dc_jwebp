@@ -1,0 +1,12 @@
+*.php text eol=lf
+
+# Development-only paths omitted from git archive.
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/bin export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/phpcs.xml export-ignore
+/rector.php export-ignore
