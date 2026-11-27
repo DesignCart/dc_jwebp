@@ -74,12 +74,34 @@ jobs:
           name: plugin-zip
           path: dist
 
+      # In a fork, mark the release as a fork build and point to the original repository.
+      # In the original repository the parent is empty and no notice is added.
+      - name: Prepare fork notice
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          parent=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.parent.full_name // empty')
+          : > release-notes.md
+          if [ -n "$parent" ]; then
+            {
+              echo "> **Fork build.** This is not an official release of [$parent](https://github.com/$parent)."
+              echo "> It is built from the fork [$GITHUB_REPOSITORY](https://github.com/$GITHUB_REPOSITORY)."
+              echo "> Licensed under GPL-3.0; the modifications and their dates are listed in"
+              echo "> [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md)."
+              echo
+            } >> release-notes.md
+            echo "title_suffix= (fork build)" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" dist/*.zip
-          --repo "$GITHUB_REPOSITORY"
-          --title "$GITHUB_REF_NAME"
-          --generate-notes
-          --verify-tag
+          TITLE_SUFFIX: ${{ steps.notes.outputs.title_suffix }}
+        run: |
+          args=(--repo "$GITHUB_REPOSITORY" --title "${GITHUB_REF_NAME}${TITLE_SUFFIX}" --generate-notes --verify-tag)
+          # gh prepends these notes to the generated ones.
+          if [ -s release-notes.md ]; then
+            args+=(--notes-file release-notes.md)
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/*.zip "${args[@]}"

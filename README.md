@@ -60,6 +60,8 @@ Runs Rector (dry-run) and PHPCS and stops on any finding. Then it packs `src/` a
 2. Commit, then tag and push: `git tag v1.2.0 && git push origin v1.2.0`.
 3. The GitHub Actions workflow checks that the tag matches the manifest version, runs the same checks, and creates the GitHub release with the ZIP attached.
 
+In a fork, the workflow titles the release `vX.Y.Z (fork build)` and puts a notice in front of the release notes. The notice links to the original repository and to `CHANGELOG.md`. In the original repository, no notice is added.
+
 ## License
 GNU General Public License version 3, see [LICENSE.md](LICENSE.md). Changes to the original release are listed in [CHANGELOG.md](CHANGELOG.md).
 
